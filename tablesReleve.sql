@@ -10,6 +10,7 @@ DROP TYPE IF EXISTS releve.departement_region;
 DROP VIEW IF EXISTS releve.LocalisationView;
 DROP MATERIALIZED VIEW IF EXISTS releve.DTL;
 DROP MATERIALIZED VIEW IF EXISTS releve.TSCEL;
+DROP MATERIALIZED VIEW IF EXISTS releve.DTLPartition;
 
 -- Création de la table TypeCapteur
 CREATE TABLE releve.TypeCapteur (
@@ -113,96 +114,65 @@ CREATE VIEW releve.LocalisationView AS
 	
 CREATE MATERIALIZED VIEW releve.DTL AS
 SELECT          
-    d.jour,
     d.mois,
     d.annee,           
-    t.heure,            
-    t.minute, 
-    l.ville,
+    t.heure,             
     l.departement,          
     l.region,           
     r.energie_solaire,
-    r.temperature,
-    r.vitesse_vent,
-    r.direction_vent,
     r.precipitation,
-    r.humidite,
-    r.pression_atmo,
-    r.debit_eau,
-    ROUND(AVG(energie_solaire), 0) AS moyenne_ensoleillement,
-    ROUND(AVG(precipitation), 0) AS moyenne_precipitation,
-    ROUND(AVG(debit_eau), 0) AS debit_moyen
+    r.debit_eau
 FROM releve.Releve r
 JOIN releve.Localisation l ON r.id_localisation = l.id_localisation
 JOIN releve.Date d ON r.id_date = d.id_date
-JOIN releve.Temps t ON r.id_temps = t.id_temps
-GROUP BY d.jour,
-    d.mois,
-    d.annee,           
-    t.heure,            
-    t.minute, 
-    l.ville,
-    l.departement,          
-    l.region,           
-    r.energie_solaire,
-    r.temperature,
-    r.vitesse_vent,
-    r.direction_vent,
-    r.precipitation,
-    r.humidite,
-    r.pression_atmo,
-    r.debit_eau;
+JOIN releve.Temps t ON r.id_temps = t.id_temps;
     
 CREATE MATERIALIZED VIEW releve.TSCEL AS
 SELECT         
-    t.heure,            
-    t.minute, 
+    t.heure,             
     l.ville,
     l.departement,          
     l.region,
     s.nom AS saison,  
-    ce.type_meteo,
-    ce.visibilite,
-    ce.nebulosite,
-    ce.type_precipitation,
-    ce.qualite_air,
-    ce.risque,         
-    r.energie_solaire,
+    ce.type_meteo,     
     r.temperature,
     r.vitesse_vent,
-    r.direction_vent,
-    r.precipitation,
-    r.humidite,
-    r.pression_atmo,
-    r.debit_eau,
-    ROUND(AVG(r.vitesse_vent), 0) AS vitesse_vent_moyenne,
-    ROUND(AVG(r.temperature), 0) AS temperature_moyenne
+    r.precipitation
 FROM releve.Releve r
 JOIN releve.Localisation l ON r.id_localisation = l.id_localisation
 JOIN releve.ConditionEnvironnemental ce ON r.id_condition = ce.id_condition
 JOIN releve.Saison s ON s.id_saison = r.id_saison
-JOIN releve.Temps t ON r.id_temps = t.id_temps
-GROUP BY t.heure,            
-    t.minute, 
-    l.ville,
-    l.departement,          
-    l.region,
-    s.nom, 
-    ce.type_meteo,
-    ce.visibilite,
-    ce.nebulosite,
-    ce.type_precipitation,
-    ce.qualite_air,
-    ce.risque,         
-    r.energie_solaire,
-    r.temperature,
-    r.vitesse_vent,
-    r.direction_vent,
-    r.precipitation,
-    r.humidite,
-    r.pression_atmo,
-    r.debit_eau;
+JOIN releve.Temps t ON r.id_temps = t.id_temps;
 
+
+
+
+-- Vue avec partition (pas vu en cours mais en BUT)
+CREATE MATERIALIZED VIEW releve.DTLPartition AS
+SELECT 
+    l.departement,
+    l.region,
+    d.annee,
+    d.mois,
+    t.heure,
+    r.energie_solaire,
+    ROUND(AVG(r.energie_solaire) OVER (PARTITION BY l.departement, d.annee, d.mois), 0) AS moyenne_ensoleillement,
+    ROUND(AVG(r.precipitation) OVER (PARTITION BY d.annee, d.mois), 0) AS moyenne_precipitation,
+    ROUND(AVG(r.debit_eau) OVER (PARTITION BY l.region, t.heure), 0) AS debit_moyen
+FROM releve.Releve r
+JOIN releve.Localisation l ON r.id_localisation = l.id_localisation
+JOIN releve.Date d ON r.id_date = d.id_date
+JOIN releve.Temps t ON r.id_temps = t.id_temps;
 
 COMMIT;
+
+
+
+
+
+
+
+
+
+
 	

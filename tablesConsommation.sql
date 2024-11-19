@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS consommation.Tarification CASCADE;
 DROP TABLE IF EXISTS consommation.Date CASCADE;
 DROP TABLE IF EXISTS consommation.SourceEnergie CASCADE;
 DROP TABLE IF EXISTS consommation.TypeClient CASCADE;
+DROP MATERIALIZED VIEW IF EXISTS consommation.DTCL;
 
 -- Création de la table TypeClient
 CREATE TABLE consommation.TypeClient (
@@ -87,3 +88,27 @@ CREATE TABLE consommation.Consommation (
     quantite_heure_pointe NUMERIC(10, 2),
     PRIMARY KEY (id_client, id_date, id_contrat, id_type_client, id_source_energie, id_localisation, id_tarification)
 );
+
+COMMIT;
+
+CREATE MATERIALIZED VIEW consommation.DTCL AS
+SELECT
+    d.jour,
+    d.mois,             
+    d.annee,          
+    d.saison,           
+    t.type AS type_tarification,
+    c.nom AS nom,
+    c.prenom AS prenom, 
+    c.date_naissance,
+    cons.id_type_client,
+    cons.id_contrat,
+    cons.cout_total,
+    cons.emission_co2,
+    cons.quantite_total,
+    cons.quantite_heure_creuse,
+    cons.quantite_heure_pointe
+FROM consommation.Consommation cons
+JOIN consommation.Date d ON cons.id_date = d.id_date 
+JOIN consommation.Tarification t ON t.id_tarification = cons.id_tarification
+JOIN consommation.Client c ON cons.id_client = c.id_client;
